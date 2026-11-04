@@ -851,31 +851,6 @@ fun SettingsScreen(
                         modifier = Modifier.size(18.dp),
                     )
                 }
-                RowDivider()
-                // Beside the name rather than under About: it is about the
-                // person who makes the app, not about the build.
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { uriHandler.openUri(KOFI_URL) }
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.support_development), style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            KOFI_URL.removePrefix("https://"),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = InkDim,
-                        )
-                    }
-                    Icon(
-                        PhosphorIcons.Regular.ArrowUpRight,
-                        contentDescription = null,
-                        tint = InkDim,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
             }
         }
 
@@ -1043,12 +1018,12 @@ private const val PAGE_TRAVEL_MS = 260
 private const val PAGE_FADE_MS = 140
 
 /**
- * The way in: whose account this is, and the four places to go.
+ * The way in: whose account this is, and the places to go.
  *
  * Five identical rows was a list of words where the first thing anyone wants
  * to see is whether they are signed in and as whom. The account is a card with
  * their picture on it, and the rest are tiles two abreast — a shape you can
- * aim at, and one that says these are four places rather than four settings.
+ * aim at, and one that says these are places rather than settings.
  */
 @Composable
 private fun SettingsIndex(
@@ -1106,28 +1081,11 @@ private fun SettingsIndex(
             )
         }
 
-        // Six places, and a seventh tile that is not a place: it leaves the app
-        // for the Ko-fi page. Last, and in the same shape as the rest, because
-        // it is an offer rather than a setting — asking louder than that would
-        // be asking on a screen somebody opened to change something.
-        val uriHandler = LocalUriHandler.current
         val pages = SettingsPage.entries.filter { it != SettingsPage.Account }
-        val rows = pages.chunked(2)
-        rows.forEachIndexed { index, pair ->
-            val last = index == rows.lastIndex
+        pages.chunked(2).forEach { pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 pair.forEach { page -> PageTile(page, Modifier.weight(1f)) { onOpen(page) } }
-                // The support tile fills the gap a row of one would leave, and
-                // makes its own row when the pages divide evenly.
-                if (last && pair.size == 1) {
-                    SupportTile(Modifier.weight(1f)) { uriHandler.openUri(KOFI_URL) }
-                }
-            }
-            if (last && pair.size == 2) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SupportTile(Modifier.weight(1f)) { uriHandler.openUri(KOFI_URL) }
-                    Spacer(Modifier.weight(1f))
-                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
         }
 
@@ -1241,18 +1199,6 @@ private fun PageTile(page: SettingsPage, modifier: Modifier = Modifier, onClick:
         icon = page.icon,
         title = stringResource(page.title),
         summary = stringResource(page.summary),
-        modifier = modifier,
-        onClick = onClick,
-    )
-}
-
-/** Not a page: the one tile that leaves the app. */
-@Composable
-private fun SupportTile(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Tile(
-        icon = PhosphorIcons.Regular.HandHeart,
-        title = stringResource(R.string.support_development),
-        summary = KOFI_URL.removePrefix("https://"),
         modifier = modifier,
         onClick = onClick,
     )
@@ -2481,7 +2427,6 @@ private val LICENCES = listOf(
 
 private const val GITHUB_USER = "Lelonio"
 private const val GITHUB_URL = "https://github.com/Lelonio"
-private const val KOFI_URL = "https://ko-fi.com/lelonio"
 private const val DISCUSSIONS_URL = "https://github.com/Lelonio/Square/discussions"
 private const val TELEGRAM_COMMUNITY_URL = "https://t.me/+SAOhZ4HTFpMwNDJk"
 private const val NEW_ISSUE_URL = "https://github.com/Lelonio/Square/issues/new/choose"
