@@ -811,46 +811,32 @@ fun SettingsScreen(
         if (shown == SettingsPage.App && "system" in openGroups) groupEnd(Group.SYSTEM)
 
         if (shown == SettingsPage.About) item("author") {
-            Section(stringResource(R.string.developed_by)) {
-                val uriHandler = LocalUriHandler.current
-                Row(
-                    Modifier
+            val uriHandler = LocalUriHandler.current
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    "Based on Square by Lelonio",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = InkDim,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { uriHandler.openUri(GITHUB_URL) }
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // GitHub serves the account picture at `<user>.png`, so the
-                    // avatar follows whatever it is set to rather than being a
-                    // copy checked in here.
-                    Artwork(
-                        url = "$GITHUB_URL.png",
-                        title = GITHUB_USER,
-                        modifier = Modifier
-                            .size(54.dp)
-                            .softShadow(CircleShape, elevation = 10.dp),
-                        corner = 27.dp,
-                        decodeSize = 54.dp,
-                    )
-                    Column(
-                        Modifier
-                            .weight(1f)
-                            .padding(start = 14.dp),
-                    ) {
-                        Text(GITHUB_USER, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            GITHUB_URL.removePrefix("https://"),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = InkDim,
-                        )
-                    }
-                    Icon(
-                        PhosphorIcons.Regular.ArrowUpRight,
-                        contentDescription = null,
-                        tint = InkDim,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+                        .clickable { uriHandler.openUri(GITHUB_URL) },
+                )
+                Text(
+                    "Modified by Robin Ahmed",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = InkDim,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { uriHandler.openUri("https://www.facebook.com/vetkimasss") },
+                )
             }
         }
 
@@ -1088,8 +1074,6 @@ private fun SettingsIndex(
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
         }
-
-        IndexFooter()
     }
 }
 
