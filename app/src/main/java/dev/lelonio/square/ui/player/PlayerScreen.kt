@@ -846,12 +846,13 @@ fun PlayerScreen(
                     // where this one fades; enlarged until the two coincide.
                     // A square scan has none and is shown as it is.
                     zoom = if (coverHeroUrl != null) {
-                        dev.lelonio.square.ui.components.TALL_ART_ZOOM
-                    } else {
-                        1f
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
+                    dev.lelonio.square.ui.components.TALL_ART_ZOOM
+                } else {
+                    1f
+                },
+                showSharp = false,
+                modifier = Modifier.fillMaxSize(),
+            )
                 // And the light still moves, in the cover's own colours: it is
                 // what the glass above has to bend. Only *under* the picture,
                 // though — beams sweeping across a photograph wash it out, and
