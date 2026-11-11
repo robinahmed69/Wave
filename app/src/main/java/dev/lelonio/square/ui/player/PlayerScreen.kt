@@ -852,6 +852,18 @@ fun PlayerScreen(
                 },
                 showSharp = false,
                 modifier = Modifier.fillMaxSize(),
+            )// ছোট স্কোয়ার কভার, মাঝখানে
+            AsyncImage(
+                model = coverSquareUrl ?: state.artworkUrl,
+                contentDescription = state.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 120.dp)
+                    .fillMaxWidth(0.72f)
+                    .aspectRatio(1f)
+                    .softShadow(RoundedCornerShape(24.dp), elevation = 24.dp)
+                    .clip(RoundedCornerShape(24.dp)),
             )
                 // And the light still moves, in the cover's own colours: it is
                 // what the glass above has to bend. Only *under* the picture,
