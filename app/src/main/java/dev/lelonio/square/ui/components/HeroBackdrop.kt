@@ -85,7 +85,9 @@ fun HeroBackdrop(
         }
     }
     val context = LocalContext.current
-    val extended = extendPicture && !fadeToPage
+    // Sharp cover mode keeps the original extension. Blur-only mode uses one
+    // full-screen blurred image so there is no seam between separate layers.
+    val extended = extendPicture && !fadeToPage && showSharp
     val art by produceState<ArtSet?>(null, artworkUrl, zoom, extended) {
         if (artworkUrl == null) {
             value = null
@@ -104,6 +106,24 @@ fun HeroBackdrop(
         }
     }
     Box(modifier) {
+        // In blur-only mode, draw one continuous blurred artwork behind the
+        // whole player screen instead of combining the slot blur and extension.
+        if (!showSharp && !fadeToPage && artworkUrl != null) {
+            Crossfade(
+                targetState = art,
+                animationSpec = tween(SWAP_MS),
+                label = "fullScreenBlur",
+                modifier = Modifier.fillMaxSize(),
+            ) { shown ->
+                val blur = shown?.blur ?: return@Crossfade
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .drawBehind { drawCropped(blur, shown.zoom) },
+                )
+            }
+        }
+
         if (extended && artworkUrl != null) {
             PictureExtension(
                 art = art,
@@ -172,7 +192,7 @@ fun HeroBackdrop(
             )
         }
 
-        if (artworkUrl != null) {
+        if (artworkUrl != null && (showSharp || fadeToPage)) {
             Crossfade(
                 targetState = art,
                 animationSpec = tween(SWAP_MS),
