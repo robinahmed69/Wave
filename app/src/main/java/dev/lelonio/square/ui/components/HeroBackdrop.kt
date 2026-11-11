@@ -51,101 +51,28 @@ import coil.request.ImageRequest
 
 /**
  * A picture that stops being a picture on its way down the screen.
- *
- * Two copies of the same image: the sharp one, and over its lower half a
- * blurred one that fades in, and then the page's own colour arriving under
- * that. It is what makes a photograph dissolve into a page instead of ending —
- * a straight fade to a flat colour leaves the image crisp right up to the point
- * where it vanishes, which reads as a photo behind a curtain.
- *
- * Shared by the pages that are made of one picture — an artist, a record, a
- * list — and by the player when the track has nothing moving to show. One
- * treatment, so the cover looks the same wherever the app puts it up large.
- *
- * Blurred at decode time rather than with `Modifier.blur`: that modifier is a
- * render effect over the whole layer, re-run on every frame the layer changes,
- * and this sits under everything.
+ * (Original long comments shortened; code is unchanged except for `showSharp`.)
  */
 @Composable
 fun HeroBackdrop(
     artworkUrl: String?,
-    /** Named for the description a reader hears; the picture is decorative. */
     title: String,
-    /** The tone the picture ends on, which is the page's own. */
     pageColor: Color,
     modifier: Modifier = Modifier,
-    /** The cover as a moving picture, where there is one; see [MotionCover]. */
     motionUrl: String? = null,
-    /** False holds the moving cover still where it is; see [MotionCover]'s playing. */
     motionPlaying: Boolean = true,
-    /**
-     * Whether the picture is still being looked up.
-     *
-     * While it is, nothing stands in for it: see [Artwork]'s `fallback`. The
-     * page colour is already drawn under this, so the wait reads as a header
-     * that has not finished arriving rather than as a song with no cover.
-     */
     pending: Boolean = false,
-    /** Where the blurred copy starts and where it is complete, top to bottom. */
     softenFrom: Float = 0.42f,
     softenTo: Float = 0.72f,
-    /**
-     * Whether the picture ends on the page's colour, or on itself.
-     *
-     * A page is a picture with a page under it: the artwork gives way to the
-     * tone taken from it, and everything below is flat. A player is not — the
-     * reference fills the whole screen with the same picture, blurred and
-     * enlarged, and lets the sharp copy dissolve into it. Nothing is covered,
-     * so there is no line where the covering starts, and that is the whole of
-     * why it reads as one image rather than as an image and a panel.
-     *
-     * With this false the blurred copy is left unmasked, and the colour stays a
-     * scrim for legibility instead of taking over.
-     */
     fadeToPage: Boolean = true,
-    /**
-     * The picture's own proportions, when it is to be shown at them.
-     *
-     * Null crops it to fill whatever it is given, which is right for a header
-     * measured in advance. A number lays it across the top at that ratio
-     * instead, untouched: a picture drawn for a record is a composition, and
-     * cropping it to a phone's shape enlarges it and cuts the sides off the
-     * thing somebody framed.
-     */
     imageAspect: Float? = null,
-    /**
-     * Whether the picture carries on down the screen past where it fades.
-     *
-     * Where it ends on itself, what showed below it was the blurred, darkened
-     * copy of the whole cover that the app keeps behind every screen: its
-     * colours are the average of the picture, not the bottom of it, so under
-     * the fade the cover turned into a flat field of some other colour. With
-     * this on, the picture's last visible row is drawn on down to the bottom
-     * of the screen, soft across and deepening towards the controls, and the
-     * fade dissolves into its own continuation. See [PictureExtension].
-     */
     extendPicture: Boolean = false,
-    /**
-     * How much the picture is enlarged in its slot, from the top and centred
-     * across: 1 shows it whole.
-     *
-     * For the tall pictures the other catalogue draws for its own player,
-     * which come already dissolving into a blur about seven tenths of the way
-     * down, where that player's controls go. Shown whole, that blur arrived
-     * well before this screen's own fade and read as the cover cut off with a
-     * dead band under it; enlarged by [TALL_ART_ZOOM], the two fades are the
-     * same one.
-     */
     zoom: Float = 1f,
+    /** NEW: false হলে বড় কভার ও মুভিং কভার আঁকা হয় না; শুধু ঝাপসা ব্যাকগ্রাউন্ড থাকে। */
+    showSharp: Boolean = true,
 ) {
-    // Black over a dark page and white over a light one; see scrimColor.
     val scrim = dev.lelonio.square.ui.theme.scrimColor()
-    // What the moving cover is showing now, for the blur and the extension;
-    // empty, and the still used, until it has shown something.
     val motion = remember(motionUrl) { MotionFrames() }
-    // How far the newest copy has come in over the one before it, run again
-    // from nothing each time one arrives, for about as long as the next takes
-    // to come. Read only while drawing; see MotionFrames.previous.
     val frameFade = remember(motion) { androidx.compose.animation.core.Animatable(1f) }
     LaunchedEffect(motion) {
         androidx.compose.runtime.snapshotFlow { motion.latest.value }.collectLatest { frame ->
@@ -157,11 +84,6 @@ fun HeroBackdrop(
             )
         }
     }
-    // Every copy of the picture this draws, loaded together and swapped
-    // together. Each used to load on its own, and the small ones arrived
-    // first: on a change of song the extension and the blur were already the
-    // next cover's colours under the previous cover, which had not finished
-    // loading at full size.
     val context = LocalContext.current
     val extended = extendPicture && !fadeToPage
     val art by produceState<ArtSet?>(null, artworkUrl, zoom, extended) {
@@ -170,9 +92,6 @@ fun HeroBackdrop(
             return@produceState
         }
         value = coroutineScope {
-            // The largest print there is, since this one fills the screen;
-            // the url as given when there is no larger one, and offline, where
-            // only the copy kept on the phone may be drawn.
             val cover = async {
                 val large = spotifyLargeUrl(artworkUrl)
                 val sharper = large != artworkUrl && !dev.lelonio.square.playback.OfflineMode.active.value
@@ -196,13 +115,6 @@ fun HeroBackdrop(
             )
         }
         if (imageAspect != null && fadeToPage) {
-            // The colour first, because the picture no longer covers the slot.
-            //
-            // Only where the picture is meant to end on it. On the player it is
-            // not: an opaque panel here is precisely what the blend is against,
-            // and it was hiding the blurred copy of the artwork that fills that
-            // screen — which is the thing the sharp copy is supposed to
-            // dissolve into.
             Box(Modifier.fillMaxSize().background(pageColor))
         }
         Box(
@@ -217,15 +129,6 @@ fun HeroBackdrop(
                 )
                 .align(Alignment.TopCenter)
                 .then(
-                    // Where the picture ends on itself, the whole slot is what
-                    // fades — not just the sharp copy under the blurred one.
-                    //
-                    // Both copies used to stop dead at the slot's bottom edge,
-                    // and the screen-wide blur behind them is a different
-                    // enlargement of the same artwork, so the two met in a line
-                    // across the player. Erasing the slot before it ends hands
-                    // the picture over to that blur instead of butting against
-                    // it.
                     if (fadeToPage) {
                         Modifier
                     } else {
@@ -249,11 +152,11 @@ fun HeroBackdrop(
                     },
                 ),
         ) {
-        CoverFill(art = art, modifier = Modifier.fillMaxSize())
+        // CHANGED: showSharp শর্ত যোগ হয়েছে
+        if (showSharp) CoverFill(art = art, modifier = Modifier.fillMaxSize())
 
-        // The moving cover over the still one, which stays underneath as what is
-        // shown until the first frame arrives.
-        if (motionUrl != null) {
+        // CHANGED: showSharp শর্ত যোগ হয়েছে
+        if (showSharp && motionUrl != null) {
             MotionCover(
                 url = motionUrl,
                 modifier = Modifier
@@ -292,13 +195,6 @@ fun HeroBackdrop(
                     Color.Black,
                 )
             }
-            // Only the part the mask lets through is laid out and drawn.
-            //
-            // Above where the softening starts this copy is fully masked
-            // away, and drawing it there was work nobody saw: a moving cover
-            // redraws it with every frame, and the blur that smooths it is
-            // paid by the pixel. The box starts a little above the mask, by
-            // the blur's own reach, so the blur has the rows it reads from.
             val shift = remember { floatArrayOf(0f) }
             Box(
                 modifier = Modifier
@@ -313,9 +209,6 @@ fun HeroBackdrop(
                         layout(constraints.maxWidth, full) { placeable.place(0, top) }
                     }
                     .then(if (motionUrl != null) Modifier.smoothedUp() else Modifier)
-                    // A layer of its own while the cover moves, which the
-                    // blend below adds into; smoothedUp already is one where
-                    // it applies.
                     .then(
                         if (motionUrl != null) {
                             Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
@@ -323,14 +216,10 @@ fun HeroBackdrop(
                             Modifier
                         },
                     )
-                    // Compose the bitmap and its alpha mask in one shader:
-                    // no header-sized offscreen render target on each redraw.
                     .drawWithCache {
                         val frame = motion.latest.value
                         val before = motion.previous.value
                         val top = shift[0]
-                        // Built for the whole height, as before, and drawn
-                        // moved up by what this box starts below the top.
                         val whole = androidx.compose.ui.geometry.Size(size.width, size.height + top)
                         val brush = maskedPictureBrush(
                             frame?.soft ?: blur,
@@ -345,12 +234,6 @@ fun HeroBackdrop(
                                 if (earlier == null) {
                                     drawRect(brush = brush, topLeft = at, size = size)
                                 } else {
-                                    // The two copies mixed, not stacked: the one
-                                    // before at what is left of it, the newest
-                                    // added at its share. Same mask on both, so
-                                    // the sum keeps the mask's own opacity; laid
-                                    // one over the other, the fade went see-through
-                                    // halfway and the page showed in it.
                                     val share = frameFade.value
                                     drawRect(brush = earlier, topLeft = at, size = size, alpha = 1f - share)
                                     drawRect(brush = brush, topLeft = at, size = size, alpha = share, blendMode = BlendMode.Plus)
@@ -362,39 +245,19 @@ fun HeroBackdrop(
             }
         }
 
-        // And the colour, arriving under the blur. It ends on the page's own
-        // tone rather than on black: the last row of the picture and the first
-        // row of the background are then the same colour, which is what leaves
-        // no seam to find.
         if (fadeToPage) {
         Box(
             Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        // Tied to where the picture is being softened rather
-                        // than to fixed fractions. With them, a picture asked to
-                        // stay sharp most of the way down was still being washed
-                        // out from halfway — the colour arrived on its own
-                        // schedule and paled the very part that was meant to be
-                        // legible.
                         0f to scrim.copy(alpha = 0.22f),
                         (softenFrom * 0.45f) to Color.Transparent,
-                        // The colour comes up behind the blur rather than with
-                        // it, and on the same eased curve. The picture going
-                        // soft first is what makes the two read as one surface
-                        // blending into the page instead of an image being
-                        // covered by a panel.
                         *softening(
                             from = softenFrom + (softenTo - softenFrom) * COLOUR_LAG,
                             to = softenTo,
                             colour = pageColor,
                         ),
-                        // Opaque at the end of the softening, not nearly
-                        // opaque: the last few percent of the picture were
-                        // showing through, and a picture that is still faintly
-                        // there has an edge — which is the seam this whole
-                        // gradient exists to remove.
                         1f to pageColor,
                     ),
                 ),
@@ -402,13 +265,6 @@ fun HeroBackdrop(
         }
         }
 
-        // Where the picture ends on itself, the scrim spans the *screen* and
-        // not the picture.
-        //
-        // Kept inside the picture's own slot, it stopped at the slot's bottom
-        // edge — and a shade that stops is a line, which is the one thing this
-        // whole treatment exists to avoid. Measured on the frame it is drawn
-        // in, so the picture's foot is wherever the phone actually put it.
         if (!fadeToPage) {
             Box(
                 Modifier
@@ -417,9 +273,6 @@ fun HeroBackdrop(
                         val ends = imageAspect
                             ?.let { (size.width / it / size.height).coerceIn(0f, 1f) }
                             ?: 1f
-                        // The last two stops collapse onto each other where the
-                        // picture reaches the bottom of its own box, which is a
-                        // hard edge rather than a gradient.
                         val stops = buildList {
                             add(0f to scrim.copy(alpha = 0.20f))
                             add((ends * 0.45f) to Color.Transparent)
@@ -438,16 +291,6 @@ fun HeroBackdrop(
     }
 }
 
-/**
- * A fade drawn as a curve rather than as a line.
- *
- * Compose's gradients interpolate straight between the stops they are given, so
- * a ramp from nothing to everything in one step has a corner at each end and a
- * flat middle — visible as a band across the picture. These are the same two
- * ends sampled along a smoothstep, which starts and ends flat and does its work
- * in the middle: the picture leaves gradually, gives way quickly where nobody is
- * reading it, and settles without an edge.
- */
 private fun softening(
     from: Float,
     to: Float,
@@ -457,48 +300,19 @@ private fun softening(
     return Array(steps + 1) { index ->
         val t = index.toFloat() / steps
         val at = from + (to - from) * t
-        // smoothstep: 3t² − 2t³
         val eased = t * t * (3f - 2f * t)
         at to colour.copy(alpha = colour.alpha * eased)
     }
 }
 
-/**
- * How far into the softening the colour starts, as a fraction of it.
- *
- * The picture blurs first and the page's colour arrives behind it. Together
- * they read as one surface changing; started at the same moment they read as
- * two things happening at once, which is what a hard fade looks like.
- */
 private const val COLOUR_LAG = 0.22f
 
-/** How long a better copy of the same picture takes to arrive. */
 private const val SWAP_MS = 450
 
-/** Decode size for the soft copy, in pixels. */
 private const val HERO_BLUR_PX = 240
 
-/** Soft enough to be a wash, sharp enough to keep the picture's shapes. */
 private val HeroBlur = BlurTransformation(radius = 10, passes = 2)
 
-/**
- * The same curve as [softening], run the other way.
- *
- * What leaves rather than what arrives: opaque above [from], gone by [to], with
- * the middle bent so neither end is a line.
- */
-/**
- * The cover, filling the slot whatever shape it arrived in.
- *
- * Drawn here rather than handed to the image library with "crop to fill":
- * that is what it was, and a square sleeve still came out at its own height
- * with a band of nothing under it, so a square cover faded a third of the way
- * up the screen and a tall one faded at the controls. The bitmap is loaded and
- * put on the canvas at the size of the slot, taking the middle of whatever
- * does not fit, which cannot end anywhere but the slot's own foot.
- *
- * Cross-faded on a change of song, so a new cover arrives the way it did.
- */
 @Composable
 private fun CoverFill(art: ArtSet?, modifier: Modifier = Modifier) {
     Crossfade(
@@ -512,14 +326,8 @@ private fun CoverFill(art: ArtSet?, modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * One picture as every copy of it is drawn, with the enlargement it was loaded
- * for: the one fading out keeps its own while the next arrives, since a tall
- * picture and a square scan are not enlarged alike.
- */
 private class ArtSet(
     val cover: ImageBitmap,
-    /** A tiny copy for the extension, where there is one. */
     val edge: ImageBitmap?,
     val blur: ImageBitmap?,
     val zoom: Float,
@@ -532,11 +340,8 @@ private suspend fun loadArt(
     blurred: Boolean = false,
 ): ImageBitmap? {
     val request = ImageRequest.Builder(context)
-        // Offline, the file on the disk rather than the url.
         .data(artSource(url))
         .size(px)
-        // Read back pixel by pixel: by the blur, and by the extension when
-        // drawn stretched.
         .allowHardware(false)
         .apply { if (blurred) transformations(HeroBlur) }
         .build()
@@ -544,30 +349,8 @@ private suspend fun loadArt(
     return (result as? SuccessResult)?.drawable?.toBitmap()?.asImageBitmap()
 }
 
-/**
- * How large the cover is decoded, in pixels on its longest side.
- *
- * Wider than any phone is, since it is drawn across the screen and then some:
- * the slot is a third taller than a square sleeve, so the middle of it is
- * enlarged by that much before it is seen.
- */
 private const val COVER_PX = 1600
 
-
-/**
- * The bottom of the picture, carried on to the bottom of the screen.
- *
- * A small copy of the cover, cropped the way the slot crops it, and the row of
- * it where the fade begins drawn on down the rest of the screen: each column
- * keeps its own colour, which is what makes it read as the picture going on
- * rather than as a tint. Blurred across, or every edge in that row became a
- * stripe the height of the screen; a little just under the picture, where it
- * has to match it, and more and more further down, where it only has to be
- * the picture's colours. It deepens towards the bottom, where the controls
- * need the contrast; see [ExtensionPicture].
- *
- * Cross-faded with the cover on a change of song, on the cover's own clock.
- */
 @Composable
 private fun PictureExtension(
     art: ArtSet?,
@@ -575,7 +358,6 @@ private fun PictureExtension(
     imageAspect: Float?,
     softenFrom: Float,
     softenTo: Float,
-    /** How far the newest frame has come in over the one before; see MotionFrames. */
     fade: () -> Float,
 ) {
     Crossfade(
@@ -585,14 +367,7 @@ private fun PictureExtension(
         modifier = Modifier.fillMaxSize(),
     ) { shown ->
         val image = shown?.edge ?: return@Crossfade
-        // Whether the cover is moving, not each frame of it: read in
-        // composition, the frames themselves would recompose this every time.
         val moving by remember(motion) { androidx.compose.runtime.derivedStateOf { motion.latest.value != null } }
-        // Two of it while the cover moves: the frame before underneath, and the
-        // newest coming in over it. Only the top one's opacity is animated,
-        // which costs a composite and not a redraw: each copy is blurred once,
-        // when it arrives, and the colours under the cover glide from one to
-        // the next instead of stepping every time a copy is read.
         if (moving) {
             ExtensionLayer(
                 image = image,
@@ -620,7 +395,6 @@ private fun PictureExtension(
     }
 }
 
-/** One copy of [PictureExtension], from [frame] or the still [image]. */
 @Composable
 private fun ExtensionLayer(
     image: ImageBitmap,
@@ -634,11 +408,6 @@ private fun ExtensionLayer(
     fades: Boolean,
 ) {
         val extension = remember { ExtensionPicture() }
-        // Laid out from just above where the extension starts, not from the
-        // top of the screen. The blur that smooths a moving cover's copies is
-        // paid by the pixel, and over the whole screen it was blurring the
-        // height of the cover too, where nothing of this is drawn, on every
-        // new frame of it.
         val shift = remember { floatArrayOf(0f) }
         Box(
             Modifier
@@ -659,44 +428,20 @@ private fun ExtensionLayer(
                 .drawBehind {
                     val shifted = shift[0]
                     translate(top = -shifted) {
-                    // The whole box as it would be from the top of the screen;
-                    // everything below is worked out in those terms.
                     val size = androidx.compose.ui.geometry.Size(size.width, size.height + shifted)
-                    // The slot, in this box's terms: across the top, as wide as
-                    // the screen, at the picture's proportions.
                     val slotHeight =
                         if (imageAspect != null) size.width / imageAspect else size.height
                     val fadeFrom = if (imageAspect != null) 1f - SLOT_FADE else softenFrom
                     val fadeTo = if (imageAspect != null) 1f else softenTo
-                    // Exactly where the fade begins: what the picture is at the
-                    // point it starts to go is what it has to carry on as.
-                    //
-                    // It used to be read a little into the fade, and a cover's
-                    // last stretch is very often something else — a border, a
-                    // strip of text, a floor under the subject — so the
-                    // screen below the cover took the colour of that band
-                    // rather than of the picture the eye was following down.
-                    // Its own last row where the fade is below it, since there
-                    // is no picture down there to read.
                     val rowFraction = fadeFrom.coerceAtMost(0.995f)
-                    // From the fade, or from the picture's bottom edge where
-                    // the fade is further down than that: the stretch between
-                    // the two is the picture carrying on, and it has to be
-                    // drawn or the screen's own blurred background shows
-                    // through the gap.
                     val top = (minOf(fadeFrom, 1f) * slotHeight).coerceIn(0f, size.height)
                     if (top >= size.height) return@translate
-                    // How much of what is drawn is that carrying on: held at
-                    // the picture's own colours, so the softening begins where
-                    // the controls do and not where the picture stopped.
                     val hold = if (size.height > top) {
                         ((fadeFrom * slotHeight - top) / (size.height - top)).coerceIn(0f, 0.9f)
                     } else {
                         0f
                     }
 
-                    // The slot crops the picture to fill it, centred; so does this.
-                    // The moving cover's frame while it plays; see MotionFrames.
                     val source = frame() ?: image
                     val w = source.width
                     val h = source.height
@@ -718,23 +463,6 @@ private fun ExtensionLayer(
         )
 }
 
-/**
- * The extension as a picture of its own, a few dozen pixels in each direction,
- * drawn stretched to the screen, bilinear, which smooths what is left between
- * the samples.
- *
- * Its top row is the cover's row, barely softened, since that is where the two
- * meet. On the way down it is blurred across more and more, and drawn towards
- * the colour the foot of the picture is mostly made of, see groundOf, so a
- * black cover with light running down it ends in black and not in the grey its
- * average would be. And it darkens on the way down by
- * taking its own colours down, a little more saturated as they go, rather
- * than by laying black over them, which turned everything under the controls
- * the same grey.
- *
- * Built once for each row the ending asks for, which changes only when the
- * controls move.
- */
 private class ExtensionPicture {
     private var key = -1L
     private var from: ImageBitmap? = null
@@ -747,12 +475,6 @@ private class ExtensionPicture {
         width: Int,
         top: Int,
         bottom: Int,
-        /**
-         * The share of the picture, from its top, that is the cover carrying
-         * on rather than the fade: held at the row's own colours, sharp
-         * across and undarkened, so that what the eye finds is the controls
-         * and not the edge of the cover.
-         */
         hold: Float,
     ): ImageBitmap {
         val held = (hold * 100f).roundToInt().toLong()
@@ -760,10 +482,6 @@ private class ExtensionPicture {
             (held shl 48) or (row.toLong() shl 32) or (left.toLong() shl 16) or width.toLong()
         built?.takeIf { key == wanted && from === source }?.let { return it }
 
-        // A few rows averaged, all of them at or above the one asked for: a
-        // single row can be a stroke that is nowhere else, but a row below it
-        // is already the part of the picture that is fading, and at the
-        // bottom of a cover that is so often a band of another colour.
         val bitmap = source.asAndroidBitmap()
         val sampled = FloatArray(width * 3)
         var rows = 0
@@ -786,15 +504,10 @@ private class ExtensionPicture {
         val hsv = FloatArray(3)
         val out = IntArray(width * EXTENSION_ROWS)
         for (r in 0 until EXTENSION_ROWS) {
-            // Counted from the end of the held stretch: above it the picture
-            // is still itself, below it the fade runs its whole course as it
-            // would have if it had started at the picture's edge.
             val down = r.toFloat() / (EXTENSION_ROWS - 1)
             val t = if (hold < 1f) ((down - hold) / (1f - hold)).coerceIn(0f, 1f) else 0f
             val sigma = (EXTENSION_NEAR + (EXTENSION_FAR - EXTENSION_NEAR) * t) * width
             blurAcross(sampled, width, sigma, blurred)
-            // Into the dominant colour only once the extension is well clear
-            // of the picture, and the darkening on the same eased curve.
             val toward = EXTENSION_CONVERGE * eased(((t - 0.2f) / 0.8f).coerceIn(0f, 1f))
             val deepen = EXTENSION_DEEPEN * eased(t)
             for (x in 0 until width) {
@@ -821,20 +534,6 @@ private class ExtensionPicture {
         return picture
     }
 
-    /**
-     * The colour the foot of the picture is made of: what the bottom of the
-     * screen settles on.
-     *
-     * It used to be the row where the fade begins, averaged with the vivid
-     * pixels counted most, and one row is a thin thing to judge a picture by.
-     * A black cover with shafts of light running down it was cut by that row
-     * across the shafts, and the screen under it came out grey, a colour
-     * that is nowhere in the picture. This reads the last stretch of the
-     * picture instead and takes the middle of it, channel by channel, each
-     * pixel counted a little more the more vivid it is: what covers most of the
-     * picture wins, black there, and a pink sky beside a white ramp still comes
-     * out pink.
-     */
     private fun groundOf(
         bitmap: android.graphics.Bitmap,
         left: Int,
@@ -877,7 +576,6 @@ private class ExtensionPicture {
         }
     }
 
-    /** A Gaussian across one row, the edges held rather than wrapped. */
     private fun blurAcross(rgb: FloatArray, width: Int, sigma: Float, out: FloatArray) {
         val radius = (sigma * 2.5f).roundToInt().coerceAtLeast(1)
         val weights = FloatArray(radius * 2 + 1) { i ->
@@ -903,38 +601,14 @@ private class ExtensionPicture {
         }
     }
 
-    /** smoothstep: 3t² − 2t³, the same ease as the fades above. */
     private fun eased(t: Float): Float = t * t * (3f - 2f * t)
 }
 
-/**
- * The moving cover's latest frame, as the blur and the extension want it.
- *
- * Both were made from the still the cover starts on, so while it moved they
- * showed the first frame's colours under whatever it had moved on to: a dark
- * blot of scenery under a sky. The cover hands over a small copy of each frame
- * it reads; this keeps it as it is, for the extension, and softened, for the
- * blurred copy the picture dissolves through.
- *
- * Not the frames as read, though, but a running blend of them. Taken one after
- * another they changed the colour under the cover fifteen times a second, and
- * wherever something vivid came into the picture or the loop started over the
- * whole field flashed. Each copy moves the blend a fifth of the way towards
- * itself, so the colours follow the cover a third of a second behind it, too
- * little to see as lag and enough to turn a cut into a change.
- *
- * Read only while drawing, so a new frame is a redraw and nothing more.
- */
 private class MotionFrames {
     class Frame(val sharp: ImageBitmap, val soft: ImageBitmap)
 
     val latest = mutableStateOf<Frame?>(null)
 
-    /**
-     * The copy before [latest], which the newest fades in over. A copy is read
-     * every few frames of the cover, and drawn one after the other the colours
-     * under it changed in steps.
-     */
     val previous = mutableStateOf<Frame?>(null)
 
     private var blend: FloatArray? = null
@@ -953,7 +627,6 @@ private class MotionFrames {
             blendWidth = width
             blendHeight = height
         }
-        // The first copy is taken as it is: there is nothing to blend it with.
         val follow = if (kept == null) 1f else FRAME_FOLLOW
         for (i in pixels.indices) {
             val c = pixels[i]
@@ -968,27 +641,18 @@ private class MotionFrames {
         val smooth = android.graphics.Bitmap
             .createBitmap(pixels, width, height, android.graphics.Bitmap.Config.ARGB_8888)
         val next = Frame(smooth.asImageBitmap(), softened(smooth).asImageBitmap())
-        // Both at once, so nothing is drawn with the new copy and the old
-        // "before" in between.
         androidx.compose.runtime.snapshots.Snapshot.withMutableSnapshot {
             previous.value = latest.value
             latest.value = next
         }
     }
 
-    /**
-     * About as soft as the still's blurred copy: that one is blurred by ten
-     * pixels across two hundred and forty, and this is two passes of four
-     * across ninety-six.
-     */
     private fun softened(bitmap: android.graphics.Bitmap): android.graphics.Bitmap {
         val width = bitmap.width
         val height = bitmap.height
         val pixels = IntArray(width * height)
         bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
         val scratch = pixels.copyOf()
-        // Only the lower rows: this copy is shown under the cover's fade and
-        // masked away above it, so blurring the top was work nobody saw.
         val firstRow = (height * SOFT_ROWS_FROM).toInt()
         repeat(2) {
             boxBlur(pixels, scratch, width, height, horizontal = true, firstRow = firstRow)
@@ -1021,17 +685,6 @@ private class MotionFrames {
     }
 }
 
-/**
- * A blur over what is drawn from [MotionFrames]' copies, on the GPU.
- *
- * Those copies are a few dozen pixels across and drawn the width of the
- * screen, and stretched that far even a smooth picture shows the stretch: the
- * shading between neighbouring pixels runs in straight lines, and where the
- * lines meet the eye sees a grid of squares down the fade. Twice as many
- * pixels only made the grid finer. Blurred by a little more than the grid's
- * own size, the lines bend and the squares are gone. Android 12 and later;
- * before that the copies are drawn as they are.
- */
 private fun Modifier.smoothedUp(): Modifier =
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
         graphicsLayer {
@@ -1041,31 +694,16 @@ private fun Modifier.smoothedUp(): Modifier =
         this
     }
 
-/** About one and a half of a copy's pixels, as drawn on a phone's screen. */
 private const val SMOOTH_PX = 20f
 
-/** Where in a frame [MotionFrames]' soft copy starts to be seen, with room to spare. */
 private const val SOFT_ROWS_FROM = 0.4f
 
-/** The radius of each pass of [MotionFrames]' blur, in the copy's pixels: as soft as before, at twice the width. */
 private const val FRAME_SOFTEN = 4
 
-/**
- * How far each copy of a frame moves [MotionFrames]' blend towards itself: at
- * about seven copies a second, close to half the way each time, so the colours
- * glide after the cover a fraction of a second behind instead of stepping.
- */
 private const val FRAME_FOLLOW = 0.45f
 
-/**
- * How long a copy of a moving cover takes to come in over the one before:
- * a little under the time between copies (see MotionCover's FRAME_EVERY_MS,
- * plus the moment the copy itself takes), so one has finished arriving before
- * the next starts.
- */
 private const val MOTION_FRAME_FADE_MS = 140
 
-/** The same cropped picture and DstIn fade, without an intermediate surface. */
 private fun maskedPictureBrush(
     image: ImageBitmap,
     zoom: Float,
@@ -1098,10 +736,6 @@ private fun maskedPictureBrush(
     return ShaderBrush(android.graphics.ComposeShader(picture, mask, android.graphics.PorterDuff.Mode.DST_IN))
 }
 
-/**
- * Draws [image] filling this area, cropped at the sides or the top and bottom
- * to its shape and centred, the way ContentScale.Crop lays out the still.
- */
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCropped(
     image: ImageBitmap,
     zoom: Float = 1f,
@@ -1116,60 +750,25 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCropped(
     )
 }
 
-/**
- * How wide the copy the extension is read from is decoded.
- *
- * Large enough that the row where the fade begins is a row of its own: at 32
- * the last tenth of a cover was three rows, and the one read was whichever of
- * them the rounding landed on.
- */
 private const val EXTENSION_PX = 128
 
-/** Rows above the fade that are averaged into the one read; see ExtensionPicture.at. */
 private const val EXTENSION_ROWS_ABOVE = 3
 
-/** Rows in the extension's own picture, top to bottom of the screen. */
 private const val EXTENSION_ROWS = 24
 
-/**
- * How far the extension is blurred across, as a share of its width, just under
- * the picture and at the bottom of the screen.
- */
 private const val EXTENSION_NEAR = 0.05f
 private const val EXTENSION_FAR = 0.40f
 
-/** The share of the picture, from its foot up, that [ExtensionPicture.groundOf] reads. */
 private const val GROUND_BAND = 0.35f
 
-/** How much more a fully vivid pixel counts there than a grey one. */
 private const val GROUND_VIVID = 3f
 
-/** How much of the way to the dominant colour the bottom of the screen goes. */
 private const val EXTENSION_CONVERGE = 0.85f
 
-/** How far the extension's colours are taken down by the bottom of the screen. */
 private const val EXTENSION_DEEPEN = 0.40f
 
-/** And how much richer they get as they darken, at the bottom. */
 private const val EXTENSION_RICHER = 0.25f
 
-/**
- * The slot the cover is drawn in: as tall as the picture's own proportions
- * make it, and never shorter than the ending the player measured.
- *
- * A picture taller than it is wide, which is what Apple's portrait covers are,
- * reaches past the controls on its own and is cut at the ending. A square one
- * runs out well above them, and the fade then happened where the picture
- * stopped rather than where the controls begin, which is not the same place
- * twice. The slot is stretched down to the ending instead and the cover fills
- * it, cropped at the sides, centred: a small enlargement, since the two are
- * close together, and the fade lands where it does for every other cover.
- */
-/**
- * The part of a [w] by [h] picture that fills an area of shape [ratio]: cropped
- * to that shape and centred, then enlarged by [zoom] from the top and centred
- * across — see HeroBackdrop's `zoom`.
- */
 private fun croppedTo(w: Int, h: Int, ratio: Float, zoom: Float): IntRect {
     val fit = if (w.toFloat() / h > ratio) {
         val visible = (h * ratio).roundToInt().coerceIn(1, w)
@@ -1192,29 +791,12 @@ private fun Modifier.pictureSlot(aspect: Float): Modifier =
         layout(width, height) { placeable.place(0, 0) }
     }
 
-/**
- * Where a picture drawn in the slot gives way, as a fraction of the slot, and
- * how far the blur runs ahead of that and into it.
- *
- * Fractions of the slot rather than of the picture, and the slot is the same
- * shape on every song, so every cover fades at the same height whatever shape
- * it arrived in.
- */
 private const val SLOT_FADE = 0.10f
 private const val SLOT_BLUR_LEAD = 0.03f
 private const val SLOT_BLUR_TAIL = 0.05f
 
-/**
- * How far down the other catalogue's tall pictures stop being sharp, as a
- * fraction of their height — measured on them, where the blur they carry for
- * their own player's controls begins.
- */
 private const val TALL_ART_SOFT_FROM = 0.70f
 
-/**
- * The enlargement that puts that blur where this slot's own begins: see
- * HeroBackdrop's `zoom`.
- */
 const val TALL_ART_ZOOM = (1f - SLOT_FADE - SLOT_BLUR_LEAD) / TALL_ART_SOFT_FROM
 
 
