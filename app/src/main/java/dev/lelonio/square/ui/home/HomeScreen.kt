@@ -758,7 +758,7 @@ private fun Header(
                     // the size it was to read at a glance.
                     iconSize = 44.dp,
                     nameHeight = 22.dp,
-                    plate = backdrop,
+                    plate = null,
                     modifier = Modifier
                         .padding(top = 4.dp)
                         .graphicsLayer {
