@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Required to attach the reverb effect to our own audio session. -->
@@ -126,6 +127,12 @@
             android:name=".update.UpdateService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- The floating pill shown over other apps while music plays. -->
+        <service
+            android:name=".ui.IslandService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!--
           Held while the listener signs in to Spotify in the browser, so the
