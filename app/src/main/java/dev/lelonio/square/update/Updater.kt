@@ -319,7 +319,7 @@ class Updater(context: Context) {
     companion object {
         private const val TAG = "Updater"
 
-        const val REPO = "Lelonio/Square"
+        const val REPO = "robinahmed69/Wave"
 
         /** Told apart from a network failure so the UI can offer the way out. */
         const val REASON_PERMISSION = "permission"
