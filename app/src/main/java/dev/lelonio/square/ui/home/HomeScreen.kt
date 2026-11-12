@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.zIndex
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -84,9 +86,7 @@ import dev.lelonio.square.ui.components.Artwork
 import dev.lelonio.square.ui.components.SquareWordmark
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
-import dev.lelonio.square.ui.glass.LiquidButton
 import dev.lelonio.square.ui.glass.pressable
-import dev.lelonio.square.ui.player.GlassFilm
 import dev.lelonio.square.ui.theme.Ink
 import dev.lelonio.square.ui.theme.InkDim
 import dev.lelonio.square.ui.theme.softShadow
@@ -225,7 +225,7 @@ fun HomeScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 40.dp),
             )
-            GlassAction(stringResource(R.string.log_in_with_spotify), backdrop, onLogIn)
+            GlassAction(stringResource(R.string.log_in_with_spotify), onLogIn)
             dev.lelonio.square.ui.components.SignedOutOptions(onUseYouTube, onOpenSettings)
         }
 
@@ -241,8 +241,8 @@ fun HomeScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 40.dp),
             )
-            GlassAction(stringResource(R.string.retry), backdrop, onRetry)
-            GlassAction(stringResource(R.string.log_out), backdrop, onLogOut)
+            GlassAction(stringResource(R.string.retry), onRetry)
+            GlassAction(stringResource(R.string.log_out), onLogOut)
         }
 
         is MainViewModel.UiState.Ready -> {
@@ -1286,16 +1286,19 @@ private fun ChipRow(
     }
 }
 
-/** A glass pill, for the handful of places that need a button at all. */
+/** A simple Material button without a glass effect. */
 @Composable
-private fun GlassAction(label: String, backdrop: Backdrop, onClick: () -> Unit) {
-    LiquidButton(
+private fun GlassAction(label: String, onClick: () -> Unit) {
+    Button(
         onClick = onClick,
-        backdrop = backdrop,
-        contentHeight = 50.dp,
-        contentPadding = 26.dp,
+        modifier = Modifier.height(50.dp),
+        contentPadding = PaddingValues(horizontal = 26.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
     ) {
-        Text(label, style = MaterialTheme.typography.titleMedium, color = Ink)
+        Text(label, style = MaterialTheme.typography.titleMedium)
     }
 }
 
