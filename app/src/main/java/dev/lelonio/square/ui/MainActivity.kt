@@ -300,14 +300,44 @@ class MainActivity : ComponentActivity() {
             },
             MoreExecutors.directExecutor(),
         )
+        // The app is on screen: the floating pill steps aside, and the
+        // service is (re)started so it is ready for when the app is left.
+        IslandService.visible.value = true
+        startIsland()
     }
 
     override fun onStop() {
+        // The app is out of sight: the floating pill may show.
+        IslandService.visible.value = false
         touchRefreshRate.reset()
         runCatching { unregisterReceiver(listenRequest) }
         controller?.release()
         controller = null
         super.onStop()
+    }
+
+    /**
+     * Starts the floating pill's service, asking once for "Display over other
+     * apps" if it has not been given.
+     */
+    private fun startIsland() {
+        if (!android.provider.Settings.canDrawOverlays(this)) {
+            val prefs = getSharedPreferences("island", MODE_PRIVATE)
+            if (!prefs.getBoolean("asked", false)) {
+                prefs.edit().putBoolean("asked", true).apply()
+                startActivity(
+                    android.content.Intent(
+                        android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:$packageName"),
+                    ),
+                )
+            }
+            return
+        }
+        androidx.core.content.ContextCompat.startForegroundService(
+            this,
+            android.content.Intent(this, IslandService::class.java),
+        )
     }
 
     /** Sends the visible list to the session, starting at the tapped track. */
