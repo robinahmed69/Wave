@@ -1,17 +1,12 @@
 name: Build
 
-# Every push to master and every pull request gets an APK, so a change can be
-# tried on a phone without building it by hand. No signing secrets here: with
-# no keystore the build signs with the debug key, and GitHub does not hand
-# secrets to pull requests from forks anyway.
 on:
   push:
-    branches: [master]
-  pull_request:
+    branches: [master, main]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: build-${{ github.ref }}
@@ -21,17 +16,38 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      VC: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup
 
-      - name: Build
-        run: ./gradlew :app:assembleDev --stacktrace
+      - name: Set version
+        run: |
+          echo "VC=$((${{ github.run_number }} + 100))" >> $GITHUB_ENV
+          echo "VER=2.8.$((${{ github.run_number }} + 100))" >> $GITHUB_ENV
 
-      - uses: actions/upload-artifact@v7
-        with:
-          name: square-dev-${{ github.sha }}
-          path: app/build/outputs/apk/dev/app-universal-dev.apk
-          retention-days: 14
-          if-no-files-found: error
+      - name: Keystore
+        env:
+          KS: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > keystore.jks
+            cat > keystore.properties <<EOF
+          storeFile=keystore.jks
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          EOF
+          fi
+
+      - name: Build
+        run: ./gradlew :app:assembleDev -Pvc=$VC -Pvn=$VER --stacktrace
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VER" app/build/outputs/apk/dev/app-universal-dev.apk \
+            --title "v$VER" --notes "Wave v$VER"
